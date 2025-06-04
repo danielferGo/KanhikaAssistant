@@ -16,7 +16,7 @@ public class HandDrawing : MonoBehaviour
     private void Update()
     {
         bool isPinching = hand.GetFingerIsPinching(OVRHand.HandFinger.Index);
-        if (isPinching)
+        if (true)
         {
             var ray = new Ray(brushPrefab.transform.position, brushPrefab.transform.forward);
             if (drawSurface.Raycast(ray, out var hit, maxDistance))

@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections;
+using System.Linq;
 using System.Reflection;
 using Meta.WitAi.CallbackHandlers;
 using Meta.WitAi.TTS.Utilities;
@@ -16,18 +17,21 @@ public class VoiceManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI transcriptText;
     [SerializeField] private TTSSpeaker ttsSpeaker;
     [SerializeField] private AudioSource audioSource;
-
-    public UnityEvent onWakeWordDetected;
-    public UnityEvent<string> onResponseReceived;
+    [SerializeField] private float conversationActiveTimeout;
 
     private bool _isWakeWordDetected;
     private string[] _actualWakeWords;
+    private Coroutine _conversationCoroutine;
+
+    public UnityEvent onWakeWordDetected;
+    public UnityEvent<string> onResponseReceived;
 
     private void Start()
     {
         appVoiceExperience.VoiceEvents.OnRequestCompleted.AddListener(ReactivateVoiceExperience);
         appVoiceExperience.VoiceEvents.OnPartialTranscription.AddListener(OnPartialTranscript);
         appVoiceExperience.VoiceEvents.OnFullTranscription.AddListener(OnFullTranscript);
+        ttsSpeaker.Events.OnPlaybackQueueComplete.AddListener(ReactivateConversation);
         var eventField = typeof(WitResponseMatcher).GetField("onMultiValueEvent",
             BindingFlags.NonPublic | BindingFlags.Instance);
         if (eventField != null && eventField.GetValue(witResponseMatcher) is MultiValueEvent onMultiValueEvent)
@@ -38,6 +42,16 @@ public class VoiceManager : MonoBehaviour
 
         appVoiceExperience.Activate();
         Debug.Log("Activating voice experience");
+    }
+
+    private void WakeWordDetected(string[] wakeWords)
+    {
+        Debug.Log("Wake word detected: " + string.Join(", ", wakeWords));
+        if (wakeWords.Length == 0) return;
+        _isWakeWordDetected = true;
+        _actualWakeWords = wakeWords;
+        audioSource.Play();
+        onWakeWordDetected?.Invoke();
     }
 
     private void OnPartialTranscript(string transcript)
@@ -53,17 +67,22 @@ public class VoiceManager : MonoBehaviour
         onResponseReceived?.Invoke(arg0);
     }
 
-    private void ReactivateVoiceExperience() => appVoiceExperience.Activate();
-
-    private void WakeWordDetected(string[] wakeWords)
+    private void ReactivateConversation()
     {
-        Debug.Log("Wake word detected: " + string.Join(", ", wakeWords));
-        if (wakeWords.Length == 0) return;
+        Debug.Log("Reactivating voice experience with grace period");
         _isWakeWordDetected = true;
-        _actualWakeWords = wakeWords;
-        audioSource.Play();
-        onWakeWordDetected?.Invoke();
+        if (_conversationCoroutine != null) StopCoroutine(_conversationCoroutine);
+        _conversationCoroutine = StartCoroutine(ActivateConversationCountdown());
     }
+
+    private IEnumerator ActivateConversationCountdown()
+    {
+        yield return new WaitForSeconds(conversationActiveTimeout);
+        _isWakeWordDetected = false;
+        Debug.Log("Conversartion ended; wake word now required again.");
+    }
+    
+    private void ReactivateVoiceExperience() => appVoiceExperience.Activate();
 
     public void Speak(string text)
     {

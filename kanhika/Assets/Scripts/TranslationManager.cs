@@ -16,14 +16,16 @@ public class TranslationManager : MonoBehaviour
     private void Start()
     {
         assistantManager._onTranslationReceived.AddListener(UpdateTranslation);
-        // var translationResponse = new TranslationResponse();
-        // translationResponse.hiragana = "ひらがな";
-        // translationResponse.katakana = "カタカナ";
-        // translationResponse.kanji = "漢字";
-        // translationResponse.pronunciation = "Konichiwsa";
-        // translationResponse.teacher_message = "This is a test message.";
-        // translationResponse.isTranslation = true;
-        // UpdateTranslation(translationResponse);
+        var translationResponse = new TranslationResponse
+        {
+            hiragana = "ひらがな",
+            katakana = "カタカナ",
+            kanji = "漢字",
+            pronunciation = "Konichiwsa",
+            teacher_message = "This is gow you say hello.",
+            isTranslation = true
+        };
+        UpdateTranslation(translationResponse);
         ChangeCanvasVisibility(0);
     }
 
